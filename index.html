@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torre de Hanoi</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .info {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        #towers {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .tower {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            position: relative;
+            width: 30%;
+            height: 300px;
+            cursor: pointer;
+        }
+        
+        .base {
+            width: 80%;
+            height: 20px;
+            background-color: #8B4513;
+            border-radius: 5px;
+        }
+        
+        .rod {
+            position: absolute;
+            width: 10px;
+            height: 250px;
+            background-color: #8B4513;
+            bottom: 20px;
+            z-index: 1;
+            border-radius: 5px;
+        }
+        
+        .disk {
+            height: 30px;
+            border-radius: 10px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .disk.selected {
+            transform: translateY(-10px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 600px) {
+            .tower {
+                width: 32%;
+                height: 250px;
+            }
+            
+            .rod {
+                height: 200px;
+            }
+            
+            .disk {
+                height: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Torre de Hanoi</h1>
+        
+        <div class="controls">
+            <button id="reset">Reiniciar</button>
+            <button id="decrement-disks">- Discos</button>
+            <button id="increment-disks">+ Discos</button>
+        </div>
+        
+        <div class="info">
+            <p>Discos: <span id="disks-count">3</span> | Movimentos: <span id="moves-count">0</span> | Mínimo: <span id="min-moves">7</span></p>
+            <p id="message"></p>
+        </div>
+        
+        <div id="towers">
+            <div class="tower" id="tower1">
+                <div class="rod"></div>
+                <div class="base"></div>
+            </div>
+            <div class="tower" id="tower2">
+                <div class="rod"></div>
+                <div class="base"></div>
+            </div>
+            <div class="tower" id="tower3">
+                <div class="rod"></div>
+                <div class="base"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const towers = [
+                document.getElementById('tower1'),
+                document.getElementById('tower2'),
+                document.getElementById('tower3')
+            ];
+            
+            let disksCount = 3;
+            let moves = 0;
+            let selectedDisk = null;
+            let selectedTower = null;
+            const colors = ['#FF5252', '#FF9800', '#FFEB3B', '#4CAF50', '#2196F3', '#673AB7', '#9C27B0', '#E91E63'];
+            
+            // Inicia o jogo
+            initGame();
+            
+            // Adiciona os eventos aos botões
+            document.getElementById('reset').addEventListener('click', resetGame);
+            document.getElementById('decrement-disks').addEventListener('click', () => {
+                if (disksCount > 1) {
+                    disksCount--;
+                    resetGame();
+                }
+            });
+            document.getElementById('increment-disks').addEventListener('click', () => {
+                if (disksCount < 8) {
+                    disksCount++;
+                    resetGame();
+                }
+            });
+            
+            // Adiciona os eventos às torres
+            towers.forEach(tower => {
+                tower.addEventListener('click', () => handleTowerClick(tower));
+            });
+            
+            // Adiciona eventos de teclado para os números 1, 2 e 3
+            document.addEventListener('keydown', (event) => {
+                const key = event.key;
+                if (key === '1' || key === '2' || key === '3') {
+                    const towerIndex = parseInt(key) - 1;
+                    handleTowerClick(towers[towerIndex]);
+                }
+            });
+            
+            function initGame() {
+                // Limpa as torres
+                towers.forEach(tower => {
+                    // Remove todos os discos (mantém a base e a haste)
+                    Array.from(tower.children)
+                        .filter(child => child.classList.contains('disk'))
+                        .forEach(disk => tower.removeChild(disk));
+                });
+                
+                // Adiciona os discos à primeira torre
+                for (let i = disksCount; i >= 1; i--) {
+                    const disk = document.createElement('div');
+                    disk.classList.add('disk');
+                    disk.style.width = `${i * 20 + 40}px`;
+                    disk.style.backgroundColor = colors[(i - 1) % colors.length];
+                    disk.dataset.size = i;
+                    towers[0].appendChild(disk);
+                }
+                
+                // Atualiza as contagens
+                moves = 0;
+                updateCounts();
+                document.getElementById('message').textContent = '';
+            }
+            
+            function resetGame() {
+                selectedDisk = null;
+                selectedTower = null;
+                initGame();
+            }
+            
+            function handleTowerClick(tower) {
+                // Se nenhum disco estiver selecionado
+                if (!selectedDisk) {
+                    // Verifica se a torre tem discos
+                    const disks = Array.from(tower.children).filter(child => child.classList.contains('disk'));
+                    if (disks.length === 0) return;
+                    
+                    // Seleciona o disco do topo
+                    selectedDisk = disks[disks.length - 1];
+                    selectedTower = tower;
+                    selectedDisk.classList.add('selected');
+                } 
+                // Se já tiver um disco selecionado
+                else {
+                    // Verifica se é a mesma torre
+                    if (tower === selectedTower) {
+                        // Cancela a seleção
+                        selectedDisk.classList.remove('selected');
+                        selectedDisk = null;
+                        selectedTower = null;
+                        return;
+                    }
+                    
+                    // Verifica se o movimento é válido
+                    const disks = Array.from(tower.children).filter(child => child.classList.contains('disk'));
+                    
+                    if (disks.length === 0 || parseInt(selectedDisk.dataset.size) < parseInt(disks[disks.length - 1].dataset.size)) {
+                        // Move o disco
+                        selectedDisk.classList.remove('selected');
+                        selectedTower.removeChild(selectedDisk);
+                        tower.appendChild(selectedDisk);
+                        
+                        // Atualiza o contador de movimentos
+                        moves++;
+                        updateCounts();
+                        
+                        // Verifica se o jogo acabou
+                        checkWin();
+                    }
+                    
+                    // Limpa a seleção
+                    selectedDisk = null;
+                    selectedTower = null;
+                }
+            }
+            
+            function updateCounts() {
+                document.getElementById('disks-count').textContent = disksCount;
+                document.getElementById('moves-count').textContent = moves;
+                document.getElementById('min-moves').textContent = (2 ** disksCount) - 1;
+            }
+            
+            function checkWin() {
+                // Verifica se todos os discos estão na terceira torre
+                const disksInLastTower = Array.from(towers[2].children).filter(child => child.classList.contains('disk'));
+                
+                if (disksInLastTower.length === disksCount) {
+                    const minMoves = (2 ** disksCount) - 1;
+                    let message = `Parabéns! Você completou o jogo em ${moves} movimentos.`;
+                    
+                    if (moves === minMoves) {
+                        message += " Você usou o número mínimo de movimentos!";
+                    }
+                    
+                    document.getElementById('message').textContent = message;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
